@@ -1,0 +1,51 @@
+/* Arduino function for SR-04 ultrasonic sensor
+V1.0
+Created by Rafael Vargas
+10/11/2023
+*/
+
+#define TRIGGER_PIN 8
+#define ECHO_PIN 9
+
+void setup() {
+  pinMode(TRIGGER_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  Serial.begin(9600);
+}
+
+void loop() {
+  Serial.println(ultrassom(ECHO_PIN, TRIGGER_PIN));
+}
+
+float ultrassom(int pin_echo, int pin_trigger) {
+  long tstart, tstop;
+  float dist;
+  tstart = micros();
+  if (digitalRead(pin_echo) == 1) { // If echo starts with 1, it can be a incomplete echo from previous timeouted measurements. In this case we return 300 cm.
+    return 300;
+  }
+
+  digitalWrite(pin_trigger, LOW); // Ensure to low the trigger, just in case.
+  delayMicroseconds(2);
+  digitalWrite(pin_trigger, HIGH); // High on trigger for 10 microseconds.
+  delayMicroseconds(10);
+  digitalWrite(pin_trigger, LOW);
+
+  tstart = micros();
+  while (digitalRead(pin_echo) == 0) { // Waits while the echo remains in 0.
+    if ((micros() - tstart) > 500) { // In case of no response for 0.5 ms (no echo or no vcc on the sensor), we return 500 cm.
+      return 500;
+    }
+  }
+
+  tstart = micros(); // Saves the time when echo is set to 1.
+  while (digitalRead(pin_echo) == 1) { // Waits while the echo remains in 1.
+    if ((micros() - tstart) > 17632) { // The usual timeout of the SR04 is 150 ms, this is too much. In this while loop we wait only 17 ms, then return 300 cm.
+      return 300;
+    }
+  }
+  
+  tstop = micros(); // Saves the time when echo returns to zero.
+  dist = 0.0170145 * (tstop - tstart);
+  return dist;
+}
